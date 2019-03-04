@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>System.IO.Compression</AssemblyName>
     <OutputType>Library</OutputType>
@@ -8,7 +8,6 @@
   </PropertyGroup>
   <!-- Default configurations to help VS understand the options -->
   <ItemGroup>
-    <Compile Include="Interop\Interop.zlib.cs" />
     <Compile Include="$(SharedOpenSourcePath)System\IO\Compression\ZipArchive.cs" />
     <Compile Include="$(SharedOpenSourcePath)System\IO\Compression\ZipArchiveEntry.cs" />
     <Compile Include="$(SharedOpenSourcePath)System\IO\Compression\ZipArchiveMode.cs" />
@@ -63,7 +62,10 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Interop.Libraries.cs">
       <Link>Common\Interop\Windows\Interop.Libraries.cs</Link>
     </Compile>
-  </ItemGroup>
+    <Compile Include="$(CommonPath)\Interop\Windows\ZLib\Interop.zlib.cs">
+      <Link>Common\Interop\Windows\ZLib\Interop.zlib.cs</Link>
+    </Compile>    
+    </ItemGroup>
   <!-- Unix specific files -->
   <ItemGroup Condition=" '$(TargetsUnix)' == 'true' ">
     <Compile Include="System\IO\Compression\ZipArchiveEntry.Unix.cs" />
