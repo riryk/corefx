@@ -11,7 +11,7 @@ namespace System.IO.Pipelines
     /// <summary>
     /// Defines a class that provides a pipeline to which data can be written.
     /// </summary>
-    public abstract partial class PipeWriter : IBufferWriter<byte>
+    public abstract partial class PipeWriter : IAsyncBufferedWriter<byte>
     {
         private PipeWriterStream _stream;
 
@@ -95,6 +95,40 @@ namespace System.IO.Pipelines
                     break;
                 }
             }
+        }
+
+        ValueTask IAsyncBufferedWriter<byte>.WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            ValueTask<FlushResult> task = WriteAsync(buffer, cancellationToken);
+
+            return GetAsValueTask(task);
+        }
+
+        ValueTask IAsyncBufferedWriter<byte>.FlushAsync(CancellationToken cancellationToken)
+        {
+            ValueTask<FlushResult> task = FlushAsync(cancellationToken);
+
+            return GetAsValueTask(task);
+        }
+
+        private static ValueTask GetAsValueTask(in ValueTask<FlushResult> task)
+        {
+            if (task.IsCompleted)
+            {
+                task.GetAwaiter().GetResult();
+                return default;
+            }
+
+            static async ValueTask AwaitTask(ValueTask<FlushResult> task)
+            {
+                FlushResult result = await task;
+                if (result.IsCanceled)
+                {
+                    ThrowHelper.ThrowOperationCanceledException_FlushCanceled();
+                }
+            }
+
+            return AwaitTask(task);
         }
     }
 }

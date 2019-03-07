@@ -11,7 +11,7 @@ namespace System.IO.Pipelines
     /// <summary>
     /// Defines a class that provides access to a read side of pipe.
     /// </summary>
-    public abstract partial class PipeReader
+    public abstract partial class PipeReader : IAsyncBufferedReader<byte>
     {
         private PipeReaderStream _stream;
 
@@ -132,6 +132,18 @@ namespace System.IO.Pipelines
                     AdvanceTo(consumed);
                 }
             }
+        }
+
+        async ValueTask<ReadResult<byte>> IAsyncBufferedReader<byte>.ReadAsync(CancellationToken cancellationToken)
+        {
+            ReadResult result = await ReadAsync(cancellationToken);
+
+            if (result.IsCanceled)
+            {
+                ThrowHelper.ThrowOperationCanceledException_ReadCanceled();
+            }
+
+            return new ReadResult<byte>(result.Buffer, result.IsCompleted);
         }
     }
 }
