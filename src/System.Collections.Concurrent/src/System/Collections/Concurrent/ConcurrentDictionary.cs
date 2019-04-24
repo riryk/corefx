@@ -729,23 +729,68 @@ namespace System.Collections.Concurrent
         /// of the dictionary.  The contents exposed through the enumerator may contain modifications
         /// made to the dictionary after <see cref="GetEnumerator"/> was called.
         /// </remarks>
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(this);
+
+        public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
         {
-            Node[] buckets = _tables._buckets;
+            private readonly Node[] _buckets;
+            private int _state;
+            private int _i;
+            private Node _n;
 
-            for (int i = 0; i < buckets.Length; i++)
+            public Enumerator(ConcurrentDictionary<TKey, TValue> dictionary)
             {
-                // The Volatile.Read ensures that we have a copy of the reference to buckets[i].
-                // This protects us from reading fields ('_key', '_value' and '_next') of different instances.
-                Node current = Volatile.Read<Node>(ref buckets[i]);
-
-                while (current != null)
+                if (dictionary == null)
                 {
-                    yield return new KeyValuePair<TKey, TValue>(current._key, current._value);
-                    current = current._next;
+                    throw new ArgumentNullException(nameof(dictionary));
+                }
+
+                Current = default;
+                _state = -1;
+                _buckets = dictionary._tables._buckets;
+                _i = 0;
+                _n = null;
+            }
+
+            public KeyValuePair<TKey, TValue> Current { get; private set; }
+
+            public bool MoveNext()
+            {
+                switch (_state)
+                {
+                    case -1:
+                        if (_i >= _buckets.Length)
+                        {
+                            return false;
+                        }
+
+                        _n = Volatile.Read(ref _buckets[_i]);
+                        _state = 1;
+                        goto case 1;
+
+                    case 1:
+                        while (_n != null)
+                        {
+                            Current = new KeyValuePair<TKey, TValue>(_n._key, _n._value);
+                            _n = _n._next;
+                            return true;
+                        }
+
+                        _i++;
+                        _state = -1;
+                        goto case -1;
+
+                    default:
+                        return false;
                 }
             }
+
+            bool IEnumerator.MoveNext() => MoveNext();
+            object IEnumerator.Current => Current;
+            void IEnumerator.Reset() => throw new NotSupportedException();
+            void IDisposable.Dispose() { }
         }
+
 
         /// <summary>
         /// Shared internal implementation for inserts and updates.
